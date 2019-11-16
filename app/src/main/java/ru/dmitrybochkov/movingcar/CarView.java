@@ -30,16 +30,16 @@ import tt.euclidyaw3d.dubins.DubinsCurve;
 
 public class CarView extends View {
 
+    private static final int CAR_WIDTH = 60;
+    private static final int CAR_LENGTH = 129;
+
     private int radius = 200;
     private int speed = 520;
 
-    private tt.euclidyaw3d.Point carPosition = new tt.euclidyaw3d.Point(300, 1000, Math.PI / 2);
+    private tt.euclidyaw3d.Point carPosition = new tt.euclidyaw3d.Point(300, 500, Math.PI / 2);
 
     DubinsCurve dc;
     private tt.euclidyaw3d.Point[] path;
-
-    private int carWidth = 60;
-    private int carLength = 129;
 
     private GestureDetector mTapDetector;
 
@@ -110,10 +110,10 @@ public class CarView extends View {
     }
 
     private Rect calculateCarRect(int centerX, int centerY) {
-        int left = centerX - (carLength / 2);
-        int top = centerY - (carWidth / 2);
-        int right = centerX + (carLength / 2);
-        int bottom = centerY + (carWidth / 2);
+        int left = centerX - (CAR_LENGTH / 2);
+        int top = centerY - (CAR_WIDTH / 2);
+        int right = centerX + (CAR_LENGTH / 2);
+        int bottom = centerY + (CAR_WIDTH / 2);
         return new Rect(left, top, right, bottom);
     }
 
