@@ -13,6 +13,8 @@ import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.Transformation;
 
+import org.apache.commons.lang3.ArrayUtils;
+
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import tt.euclidyaw3d.dubins.DubinsCurve;
@@ -36,7 +38,11 @@ public class CarView extends View {
     private int radius = 200;
     private int speed = 520;
 
+    private boolean showDestination = false;
+
+    Drawable carDrawable;
     private tt.euclidyaw3d.Point carPosition;
+    private CarDestination carDestination;
 
     DubinsCurve dc;
     private tt.euclidyaw3d.Point[] path;
@@ -59,7 +65,8 @@ public class CarView extends View {
     }
 
     private void init() {
-            mTapDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
+        carDrawable = ContextCompat.getDrawable(getContext(), R.drawable.car);
+        mTapDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
                 @Override
                 public boolean onSingleTapConfirmed(MotionEvent event) {
                     calculatePath(new Point(Math.round(event.getX()), Math.round(event.getY())));
@@ -77,6 +84,14 @@ public class CarView extends View {
         this.radius = radius;
     }
 
+    public boolean isShowDestination() {
+        return showDestination;
+    }
+
+    public void setShowDestination(boolean showDestination) {
+        this.showDestination = showDestination;
+    }
+
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
@@ -92,10 +107,19 @@ public class CarView extends View {
     protected void onDraw(Canvas canvas) {
         canvas.save();
         canvas.rotate((float)(carPosition.getYaw() * 180 / Math.PI), (float)carPosition.x, (float)carPosition.y);
-        Drawable d = ContextCompat.getDrawable(getContext(), R.drawable.car);
-        d.setBounds(calculateCarRect((int)Math.round(carPosition.x), (int)Math.round(carPosition.y)));
-        d.draw(canvas);
+        carDrawable.setBounds(calculateCarRect((int)Math.round(carPosition.x), (int)Math.round(carPosition.y)));
+        carDrawable.draw(canvas);
         canvas.restore();
+
+        if (showDestination && carDestination != null && !carPosition.equals(carDestination.point)) {
+            canvas.save();
+            canvas.rotate(carDestination.rotation, (float) carDestination.point.x, (float) carDestination.point.y);
+            carDrawable.setBounds(carDestination.bounds);
+            carDrawable.setAlpha(88);
+            carDrawable.draw(canvas);
+            carDrawable.setAlpha(255);
+            canvas.restore();
+        }
     }
 
     @Override
@@ -115,9 +139,16 @@ public class CarView extends View {
 //        Оптимальное будет по касательной к одной из возможных окружностей r = radius, проведенных
 //        через исходную точку.
         double endYaw = Math.atan2(touchPoint.y - carPosition.y, touchPoint.x - carPosition.x);
-        tt.euclidyaw3d.Point end = new tt.euclidyaw3d.Point(touchPoint.x, touchPoint.y, endYaw);
-        dc = new DubinsCurve(carPosition, end, radius, false);
+
+        //Посчитаем сразу все параметры необходимые для отрисовки, чтобы не пересчитывать
+        carDestination = new CarDestination(
+                new tt.euclidyaw3d.Point(touchPoint.x, touchPoint.y, endYaw),
+                (float) (endYaw * 180 / Math.PI),
+                calculateCarRect(touchPoint.x, touchPoint.y));
+        carDestination.point = new tt.euclidyaw3d.Point(touchPoint.x, touchPoint.y, endYaw);
+        dc = new DubinsCurve(carPosition, carDestination.point, radius, false);
         path = dc.interpolateUniformBy(10); //Вот это в перспективе оптимизировать бы в согласии с applyTransformation
+        path = ArrayUtils.add(path, carDestination.point); //Алгоритм теряет последнюю точку, потому добавим её вручную для точности
     }
 
     private Rect calculateCarRect(int centerX, int centerY) {
@@ -137,16 +168,28 @@ public class CarView extends View {
 
         @Override
         protected void applyTransformation(float interpolatedTime, Transformation t) {
-            super.applyTransformation(interpolatedTime, t);
-            int i = Math.round(path.length * interpolatedTime);
+            int i = Math.round((path.length - 1) * interpolatedTime);
             if (i < path.length) {
                 carPosition.x = path[i].x;
                 carPosition.y = path[i].y;
                 carPosition.z = path[i].z;
                 invalidate();
             }
+            super.applyTransformation(interpolatedTime, t);
         }
 
+    }
+
+    class CarDestination {
+        tt.euclidyaw3d.Point point;
+        float rotation;
+        Rect bounds;
+
+        public CarDestination(tt.euclidyaw3d.Point point, float rotation, Rect bounds) {
+            this.point = point;
+            this.rotation = rotation;
+            this.bounds = bounds;
+        }
     }
 
 }

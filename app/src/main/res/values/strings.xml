@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Moving car</string>
+    <string name="show_destination">Show destination</string>
+    <string name="radius">Radius</string>
 </resources>

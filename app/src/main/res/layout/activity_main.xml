@@ -15,9 +15,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Radius"
+            android:text="@string/radius"
             android:textColor="#000"
-            android:layout_marginRight="16dp"/>
+            android:layout_marginRight="16dp"
+            android:layout_marginEnd="16dp" />
 
         <SeekBar
             android:id="@+id/radius"
@@ -30,13 +31,24 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="#000"
-            android:layout_marginLeft="16dp"/>
+            android:layout_marginLeft="16dp"
+            android:layout_marginStart="16dp" />
     </LinearLayout>
+
+    <CheckBox
+        android:id="@+id/show_destination"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/show_destination"
+        android:layout_below="@id/radius_layout"
+        android:layout_marginLeft="16dp"
+        android:layout_marginBottom="16dp"
+        android:layout_marginStart="16dp" />
 
     <ru.dmitrybochkov.movingcar.CarView
         android:id="@+id/car_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@id/radius_layout"/>
+        android:layout_below="@id/show_destination"/>
 
 </RelativeLayout>

@@ -1,6 +1,8 @@
 package ru.dmitrybochkov.movingcar;
 
 import android.os.Bundle;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
@@ -13,6 +15,7 @@ public class MainActivity extends AppCompatActivity {
     private CarView carView;
     private SeekBar radiusSeekBar;
     private TextView radiusTextView;
+    private CheckBox showDestination;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
         carView = findViewById(R.id.car_view);
         radiusSeekBar = findViewById(R.id.radius);
         radiusTextView = findViewById(R.id.radius_text_view);
+        showDestination = findViewById(R.id.show_destination);
 
         radiusTextView.setText(String.valueOf(carView.getRadius()));
         radiusSeekBar.setProgress(Math.round(((float)carView.getRadius() / MAX_RADIUS) * 100));
@@ -46,6 +50,14 @@ public class MainActivity extends AppCompatActivity {
                 if (r == 0)
                     ++r;
                 carView.setRadius(r);
+            }
+        });
+
+        showDestination.setChecked(carView.isShowDestination());
+        showDestination.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                carView.setShowDestination(isChecked);
             }
         });
     }
