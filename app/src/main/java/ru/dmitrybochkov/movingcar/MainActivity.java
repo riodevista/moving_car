@@ -8,7 +8,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final int MAX_RADIUS = 800;
+    public static final int MAX_RADIUS = 600;
 
     private CarView carView;
     private SeekBar radiusSeekBar;

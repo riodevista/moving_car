@@ -36,7 +36,7 @@ public class CarView extends View {
     private int radius = 200;
     private int speed = 520;
 
-    private tt.euclidyaw3d.Point carPosition = new tt.euclidyaw3d.Point(300, 500, Math.PI / 2);
+    private tt.euclidyaw3d.Point carPosition;
 
     DubinsCurve dc;
     private tt.euclidyaw3d.Point[] path;
@@ -75,6 +75,17 @@ public class CarView extends View {
 
     public void setRadius(int radius) {
         this.radius = radius;
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        if (carPosition == null) {
+            carPosition = new tt.euclidyaw3d.Point(
+                    getMeasuredWidth() / 2,
+                    getMeasuredHeight() / 2,
+                    -Math.PI / 2);
+        }
     }
 
     @Override
