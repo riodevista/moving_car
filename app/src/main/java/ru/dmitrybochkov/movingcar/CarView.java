@@ -2,6 +2,8 @@ package ru.dmitrybochkov.movingcar;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
@@ -49,6 +51,8 @@ public class CarView extends View {
 
     private GestureDetector mTapDetector;
 
+    Paint outOfScreenPaint = new Paint();
+
     public CarView(Context context) {
         super(context);
         init();
@@ -74,6 +78,9 @@ public class CarView extends View {
                     return super.onSingleTapConfirmed(event);
                 }
             });
+        outOfScreenPaint.setColor(Color.parseColor("#F4B400"));
+        outOfScreenPaint.setStrokeWidth(20f);
+
     }
 
     public int getRadius() {
@@ -107,7 +114,8 @@ public class CarView extends View {
     protected void onDraw(Canvas canvas) {
         canvas.save();
         canvas.rotate((float)(carPosition.getYaw() * 180 / Math.PI), (float)carPosition.x, (float)carPosition.y);
-        carDrawable.setBounds(calculateCarRect((int)Math.round(carPosition.x), (int)Math.round(carPosition.y)));
+        Rect carBounds = calculateCarRect((int)Math.round(carPosition.x), (int)Math.round(carPosition.y));
+        carDrawable.setBounds(carBounds);
         carDrawable.draw(canvas);
         canvas.restore();
 
@@ -120,6 +128,26 @@ public class CarView extends View {
             carDrawable.setAlpha(255);
             canvas.restore();
         }
+
+        //Местоположение автомобиля за границами экрана на скорую руку
+        if (carBounds.left > getMeasuredWidth()) {
+            float y = Math.min(Math.max(0, (float)carPosition.y), getMeasuredHeight());
+            canvas.drawPoint(getMeasuredWidth(), y, outOfScreenPaint);
+        } else if (carBounds.right < 0) {
+            float y = Math.min(Math.max(0, (float)carPosition.y), getMeasuredHeight());
+            canvas.drawPoint(0, y, outOfScreenPaint);
+        }
+
+        if (carBounds.top > getMeasuredHeight()) {
+            float x = Math.min(Math.max(0, (float)carPosition.x), getMeasuredWidth());
+            canvas.drawPoint(x, getMeasuredHeight(), outOfScreenPaint);
+        } else if (carBounds.bottom < 0) {
+            float x = Math.min(Math.max(0, (float)carPosition.x), getMeasuredWidth());
+            canvas.drawPoint(x, 0, outOfScreenPaint);
+        }
+
+
+
     }
 
     @Override
