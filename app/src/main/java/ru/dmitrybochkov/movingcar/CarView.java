@@ -146,8 +146,7 @@ public class CarView extends View {
             int i = Math.round((path.length - 1) * interpolatedTime);
             if (i < path.length) {
                 car.setPosition(path[i]);
-                outOfScreenMarkers.setCarPosition(car.getPosition());
-                outOfScreenMarkers.setCarBounds(car.getBounds());
+                outOfScreenMarkers.setData(car.getPosition(), car.getBounds());
                 invalidate();
             }
             super.applyTransformation(interpolatedTime, t);
@@ -212,41 +211,40 @@ public class CarView extends View {
 
     private class OutOfScreenMarkers {
         private Paint paint = new Paint();
-        private Point carPosition;
-        private Rect carBounds;
+
+        private Point horizontalMarker;
+        private Point verticalMarker;
 
         OutOfScreenMarkers(@ColorInt int color) {
             paint.setColor(color);
             paint.setStrokeWidth(20f);
         }
 
-        void setCarPosition(Point carPosition) {
-            this.carPosition = carPosition;
-        }
-
-        void setCarBounds(Rect carBounds) {
-            this.carBounds = carBounds;
-        }
-
-        void draw(@NonNull Canvas canvas) {
-            if (carBounds == null || carPosition == null)
-                return;
-
+        void setData(Point carPosition, Rect carBounds) {
             if (carBounds.left > getMeasuredWidth()) {
                 float y = Math.min(Math.max(0, (float)carPosition.y), getMeasuredHeight());
-                canvas.drawPoint(getMeasuredWidth(), y, paint);
+                horizontalMarker = new Point(getMeasuredWidth(), y, 0);
             } else if (carBounds.right < 0) {
                 float y = Math.min(Math.max(0, (float)carPosition.y), getMeasuredHeight());
-                canvas.drawPoint(0, y, paint);
-            }
+                horizontalMarker = new Point(0, y, 0);
+            } else
+                horizontalMarker = null;
 
             if (carBounds.top > getMeasuredHeight()) {
                 float x = Math.min(Math.max(0, (float)carPosition.x), getMeasuredWidth());
-                canvas.drawPoint(x, getMeasuredHeight(), paint);
+                verticalMarker = new Point(x, getMeasuredHeight(), 0);
             } else if (carBounds.bottom < 0) {
                 float x = Math.min(Math.max(0, (float)carPosition.x), getMeasuredWidth());
-                canvas.drawPoint(x, 0, paint);
-            }
+                verticalMarker = new Point(x, 0, 0);
+            } else
+                verticalMarker = null;
+        }
+
+        void draw(@NonNull Canvas canvas) {
+            if (horizontalMarker != null)
+                canvas.drawPoint((float)horizontalMarker.x, (float)horizontalMarker.y, paint);
+            if (verticalMarker != null)
+                canvas.drawPoint((float)verticalMarker.x, (float)verticalMarker.y, paint);
         }
     }
 
