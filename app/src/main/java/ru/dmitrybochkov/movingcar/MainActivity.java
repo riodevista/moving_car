@@ -24,7 +24,7 @@ public class MainActivity extends AppCompatActivity {
 
         carView = findViewById(R.id.car_view);
         radiusSeekBar = findViewById(R.id.radius);
-        radiusTextView = findViewById(R.id.radius_text_view);
+        radiusTextView = findViewById(R.id.radius_value);
         showDestination = findViewById(R.id.show_destination);
 
         radiusTextView.setText(String.valueOf(carView.getRadius()));

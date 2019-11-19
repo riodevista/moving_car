@@ -5,35 +5,44 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <LinearLayout
+    <RelativeLayout
         android:id="@+id/radius_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
         android:padding="16dp">
         <TextView
+            android:id="@+id/radius_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/radius"
             android:textColor="#000"
             android:layout_marginRight="16dp"
-            android:layout_marginEnd="16dp" />
+            android:layout_marginEnd="16dp"
+            android:layout_centerVertical="true"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"/>
 
         <SeekBar
             android:id="@+id/radius"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"/>
+            android:layout_centerVertical="true"
+            android:layout_toRightOf="@id/radius_text"
+            android:layout_toLeftOf="@+id/radius_value"
+            android:layout_toEndOf="@id/radius_text"
+            android:layout_toStartOf="@+id/radius_value" />
 
         <TextView
-            android:id="@+id/radius_text_view"
+            android:id="@+id/radius_value"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="#000"
             android:layout_marginLeft="16dp"
-            android:layout_marginStart="16dp" />
-    </LinearLayout>
+            android:layout_marginStart="16dp"
+            android:layout_centerVertical="true"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentEnd="true" />
+    </RelativeLayout>
 
     <CheckBox
         android:id="@+id/show_destination"
