@@ -1,10 +1,10 @@
 package ru.dmitrybochkov.movingcar;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
@@ -21,38 +21,25 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import tt.euclidyaw3d.Point;
 import tt.euclidyaw3d.dubins.DubinsCurve;
 
-/**
- * Created by Dmitry Bochkov on 14.11.2019.
- */
-
 /***
+ * Created by Dmitry Bochkov on 14.11.2019.
  * Используем Dubins path http://planning.cs.uiuc.edu/node821.html , спасибо этим ребятам
  * https://github.com/mcapino/trajectorytools
  * Для случаев, когда, условно говоря, пункт назначения слишком близко и не по направлению движения,
- * подойдет Reeds-Shepp Car http://planning.cs.uiuc.edu/node822.html
+ * подойдет Reeds-Shep Car http://planning.cs.uiuc.edu/node822.html
  */
 
 public class CarView extends View {
 
-    private static final int CAR_WIDTH = 60;
-    private static final int CAR_LENGTH = 129;
-    private static final int SPEED = 520;
-
     private int radius = 200;
-
     private boolean showDestination = false;
 
-
-    Drawable carDrawable;
-    private tt.euclidyaw3d.Point carPosition;
-    private CarDestination carDestination;
-
+    private Car car;
+    private Car carDestination;
     private OutOfScreenMarkers outOfScreenMarkers;
-
-    DubinsCurve dc;
-    private tt.euclidyaw3d.Point[] path;
 
     private GestureDetector mTapDetector;
 
@@ -72,16 +59,17 @@ public class CarView extends View {
     }
 
     private void init() {
-        carDrawable = ContextCompat.getDrawable(getContext(), R.drawable.car);
+        car = new Car(ContextCompat.getDrawable(getContext(), R.drawable.car));
+        carDestination = new Car(ContextCompat.getDrawable(getContext(), R.drawable.car));
+        outOfScreenMarkers = new OutOfScreenMarkers(Color.parseColor("#F4B400"));
+
         mTapDetector = new GestureDetector(getContext(), new GestureDetector.SimpleOnGestureListener() {
                 @Override
                 public boolean onSingleTapConfirmed(MotionEvent event) {
-                    calculatePath(new Point(Math.round(event.getX()), Math.round(event.getY())));
-                    startMoving();
+                    moveTo(event.getX(), event.getY());
                     return super.onSingleTapConfirmed(event);
                 }
             });
-        outOfScreenMarkers = new OutOfScreenMarkers(Color.parseColor("#F4B400"));
     }
 
     public int getRadius() {
@@ -100,74 +88,55 @@ public class CarView extends View {
         this.showDestination = showDestination;
     }
 
+    @SuppressLint("DrawAllocation")
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
-        if (carPosition == null) {
-            carPosition = new tt.euclidyaw3d.Point(
+        if (car.isPositionUndefined()) {
+            car.setPosition(new Point(
                     getMeasuredWidth() / 2,
                     getMeasuredHeight() / 2,
-                    -Math.PI / 2);
+                    -Math.PI / 2));
         }
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
-        // TODO: 19.11.2019 Dmitry Bochkov: Полностью вынести вычисления из onDraw
-        canvas.save();
-        canvas.rotate((float)(carPosition.getYaw() * 180 / Math.PI), (float)carPosition.x, (float)carPosition.y);
-        Rect carBounds = calculateCarBounds((int)Math.round(carPosition.x), (int)Math.round(carPosition.y));
-        carDrawable.setBounds(carBounds);
-        carDrawable.draw(canvas);
-        canvas.restore();
-
-        if (showDestination && carDestination != null && !carPosition.equals(carDestination.point)) {
-            canvas.save();
-            canvas.rotate(carDestination.rotation, (float) carDestination.point.x, (float) carDestination.point.y);
-            carDrawable.setBounds(carDestination.bounds);
-            carDrawable.setAlpha(88);
-            carDrawable.draw(canvas);
-            carDrawable.setAlpha(255);
-            canvas.restore();
+        car.draw(canvas, 255);
+        if (showDestination && !car.isPositionSameTo(carDestination)) {
+            carDestination.draw(canvas, 88);
         }
-
-        //Местоположение автомобиля за границами экрана
         outOfScreenMarkers.draw(canvas);
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         mTapDetector.onTouchEvent(event);
         return true;
     }
 
-    private void startMoving() {
-        CarAnimation carAnimation = new CarAnimation(SPEED, dc.getLength());
-        startAnimation(carAnimation);
-    }
-
-    private void calculatePath(Point touchPoint) {
+    private void moveTo(float touchX, float touchY) {
 //        Направление (heading) конечной точки вычисляется как направление от исходной точки к конечной,
 //        но это, конечно, в итоге не самый оптимальный маршрут (хотя иногда и да).
 //        Оптимальное будет по касательной к одной из возможных окружностей r = radius, проведенных
 //        через исходную точку.
-        double endYaw = Math.atan2(touchPoint.y - carPosition.y, touchPoint.x - carPosition.x);
+        double endYaw = Math.atan2(touchY - car.getPosition().y, touchX - car.getPosition().x);
+        carDestination.setPosition(new Point(touchX, touchY, endYaw));
+        DubinsCurve dc = new DubinsCurve(car.getPosition(), carDestination.getPosition(), radius, false);
+        Point[] path = dc.interpolateUniformBy(10); //Вот это в перспективе оптимизировать бы в согласии с applyTransformation
+        path = ArrayUtils.add(path, carDestination.getPosition()); //Алгоритм теряет последнюю точку, потому добавим её вручную для точности
 
-        //Посчитаем сразу все параметры необходимые для отрисовки, чтобы не пересчитывать
-        carDestination = new CarDestination(
-                new tt.euclidyaw3d.Point(touchPoint.x, touchPoint.y, endYaw),
-                (float) (endYaw * 180 / Math.PI),
-                calculateCarBounds(touchPoint.x, touchPoint.y));
-        carDestination.point = new tt.euclidyaw3d.Point(touchPoint.x, touchPoint.y, endYaw);
-        dc = new DubinsCurve(carPosition, carDestination.point, radius, false);
-        path = dc.interpolateUniformBy(10); //Вот это в перспективе оптимизировать бы в согласии с applyTransformation
-        path = ArrayUtils.add(path, carDestination.point); //Алгоритм теряет последнюю точку, потому добавим её вручную для точности
+        CarAnimation carAnimation = new CarAnimation(path, Car.SPEED, dc.getLength());
+        startAnimation(carAnimation);
     }
 
 
-    class CarAnimation extends Animation {
+    private class CarAnimation extends Animation {
+        private Point[] path;
 
-        CarAnimation(float speed, double distance) {
+        CarAnimation(Point[] path, float speed, double distance) {
+            this.path = path;
             setInterpolator(new AccelerateDecelerateInterpolator());
             setDuration(Math.round(distance / speed) * 1000); //Ускорение учтем в другой раз
         }
@@ -176,53 +145,82 @@ public class CarView extends View {
         protected void applyTransformation(float interpolatedTime, Transformation t) {
             int i = Math.round((path.length - 1) * interpolatedTime);
             if (i < path.length) {
-                carPosition.x = path[i].x;
-                carPosition.y = path[i].y;
-                carPosition.z = path[i].z;
-
-                outOfScreenMarkers.setCarPosition(carPosition);
-                outOfScreenMarkers.setCarBounds(calculateCarBounds(
-                        (int)Math.round(carPosition.x),
-                        (int)Math.round(carPosition.y)));
-
+                car.setPosition(path[i]);
+                outOfScreenMarkers.setCarPosition(car.getPosition());
+                outOfScreenMarkers.setCarBounds(car.getBounds());
                 invalidate();
             }
             super.applyTransformation(interpolatedTime, t);
         }
-
     }
 
-    private Rect calculateCarBounds(int centerX, int centerY) {
-        int left = centerX - (CAR_LENGTH / 2);
-        int top = centerY - (CAR_WIDTH / 2);
-        int right = centerX + (CAR_LENGTH / 2);
-        int bottom = centerY + (CAR_WIDTH / 2);
-        return new Rect(left, top, right, bottom);
-    }
+    private class Car {
+        private static final int CAR_WIDTH = 60;
+        private static final int CAR_LENGTH = 129;
+        static final int SPEED = 520;
 
-    class CarDestination {
-        tt.euclidyaw3d.Point point;
-        float rotation;
-        Rect bounds;
+        private Point position;
+        private float canvasRotation;
+        private Rect bounds;
 
-        CarDestination(tt.euclidyaw3d.Point point, float rotation, Rect bounds) {
-            this.point = point;
-            this.rotation = rotation;
-            this.bounds = bounds;
+        Drawable carDrawable;
+
+        Car(Drawable drawable) {
+            carDrawable = drawable;
+        }
+
+        void setPosition(Point position) {
+            this.position = position;
+            canvasRotation = (float)(position.getYaw() * 180 / Math.PI);
+            bounds = calculateBounds((int)Math.round(position.x), (int)Math.round(position.y));
+        }
+
+        private Rect calculateBounds(int centerX, int centerY) {
+            int left = centerX - (CAR_LENGTH / 2);
+            int top = centerY - (CAR_WIDTH / 2);
+            int right = centerX + (CAR_LENGTH / 2);
+            int bottom = centerY + (CAR_WIDTH / 2);
+            return new Rect(left, top, right, bottom);
+        }
+
+        void draw(@NonNull Canvas canvas, int alpha) {
+            canvas.save();
+            canvas.rotate(canvasRotation, (float)position.x, (float)position.y);
+            carDrawable.setBounds(bounds);
+            carDrawable.setAlpha(alpha);
+            carDrawable.draw(canvas);
+            canvas.restore();
+        }
+
+        boolean isPositionSameTo(Car car) {
+            return this.position.equals(car.getPosition());
+        }
+
+        boolean isPositionUndefined() {
+            return position == null;
+        }
+
+        Point getPosition() {
+            return position;
+        }
+
+        Rect getBounds() {
+            return bounds;
         }
     }
 
-    class OutOfScreenMarkers {
-        Paint paint = new Paint();
-        tt.euclidyaw3d.Point carPosition;
-        Rect carBounds;
+
+    private class OutOfScreenMarkers {
+        private Paint paint = new Paint();
+        private Point carPosition;
+        private Rect carBounds;
 
         OutOfScreenMarkers(@ColorInt int color) {
             paint.setColor(color);
             paint.setStrokeWidth(20f);
         }
 
-        void setCarPosition(tt.euclidyaw3d.Point carPosition) {
+        void setCarPosition(Point carPosition) {
             this.carPosition = carPosition;
         }
 
